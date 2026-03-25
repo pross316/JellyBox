@@ -3118,12 +3118,12 @@ function showDetailModal(item) {
           <div id="dmExtraLine" class="detail-people" style="display:none"></div>
           ${genreHtml ? `<div class="detail-genres">${genreHtml}</div>` : ''}
           <div class="detail-actions">
-            <button class="primary" id="dmWatch">
+            ${item.Type !== 'Series' ? `<button class="primary" id="dmWatch">
               <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <polygon points="5 3 19 12 5 21 5 3"/>
               </svg>
               Watch
-            </button>
+            </button>` : ''}
             <button id="dmSend">
               <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <rect x="2" y="7" width="20" height="15" rx="2"/><path d="M17 2H7l-2 5h14l-2-5z"/>
@@ -3182,7 +3182,7 @@ function showDetailModal(item) {
   document.addEventListener('keydown', onKey);
   overlay.addEventListener('remove', () => document.removeEventListener('keydown', onKey));
 
-  overlay.querySelector('#dmWatch').addEventListener('click', () => {
+  overlay.querySelector('#dmWatch')?.addEventListener('click', () => {
     const audioSel = overlay.querySelector('#dmAudioTrack');
     const subSel   = overlay.querySelector('#dmSubTrack');
     const audioIdx = audioSel ? parseInt(audioSel.value) : undefined;
