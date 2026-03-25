@@ -17,6 +17,7 @@ Drop it anywhere. Open it in a browser. Connect to your Jellyfin server.
 - **Mystery Box** — blind random pick with dramatic reveal
 - **Fuzzy search** — search by title, director, or cast member (people loaded in background after init)
 - **Trailer button** — plays trailers directly in the detail modal
+- **Cast to device** — send playback to any active Jellyfin session on your network (TV, another browser, etc.)
 - **Stats tab** — library stats, top genres, completion rate, and more
 - **Multi-profile login** — saved profile switcher per browser
 - **Fast loading** — two-phase init (resume/recent rows appear immediately), localStorage library cache with 15-min TTL
