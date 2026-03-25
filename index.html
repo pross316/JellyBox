@@ -2361,7 +2361,29 @@
     padding: 2px 10px;
     border-radius: 20px;
     font-size: 0.72rem;
+  }
+  .genre-type-pills {
+    display: flex;
+    gap: 4px;
     margin-left: auto;
+  }
+  .genre-type-pill {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-family: inherit;
+    padding: 4px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all .18s;
+  }
+  .genre-type-pill:hover { border-color: rgba(125,211,252,0.3); color: var(--text); }
+  .genre-type-pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+    font-weight: 600;
   }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
@@ -2525,6 +2547,7 @@ function getUserName() { return localStorage.getItem('jb_user_name') || ''; }
         <div class="result-genres" id="resultGenres"></div>
         <div class="result-overview" id="resultOverview"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto">
+          <button class="again-btn" id="spinWatchBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg> Watch Now</button>
           <button class="again-btn" id="spinAgainBtn">Spin Again</button>
           <button class="reel-skip-btn" id="spinSkipBtn">Skip this one</button>
         </div>
@@ -3703,6 +3726,12 @@ async function showInlinePlayer(item, trackOpts = {}) {
 // Event wiring (no inline onclick)
 // ══════════════════════════════════════════════
 
+// Logo — click to go home
+document.querySelector('.app-logo').addEventListener('click', e => {
+  e.preventDefault();
+  document.querySelector('.nav-btn[data-section="shelf"]').click();
+});
+
 // Nav — delegated listener
 document.getElementById('mainNav').addEventListener('click', e => {
   const btn = e.target.closest('[data-section]');
@@ -3730,8 +3759,9 @@ document.getElementById('ratingFilter').addEventListener('change', applyFilters)
 document.getElementById('wheelType').addEventListener('change', resampleWheel);
 document.getElementById('wheelGenre').addEventListener('change', resampleWheel);
 document.getElementById('spinBtn').addEventListener('click', spin);
-document.getElementById('spinAgainBtn').addEventListener('click', spinAgain);
-document.getElementById('spinSkipBtn').addEventListener('click', skipAndSpin);
+document.getElementById('spinWatchBtn').addEventListener('click', e => { e.stopPropagation(); if (reelCurrentWinner) showInlinePlayer(reelCurrentWinner); });
+document.getElementById('spinAgainBtn').addEventListener('click', e => { e.stopPropagation(); spinAgain(); });
+document.getElementById('spinSkipBtn').addEventListener('click', e => { e.stopPropagation(); skipAndSpin(); });
 document.getElementById('reelSkipResetBtn').addEventListener('click', resetSkips);
 
 // Wheel size selector
@@ -4661,18 +4691,33 @@ function renderGenreDetail(genre, wrap, tilesGrid) {
     <option value="az">A–Z</option>
     <option value="added">Newest Added</option>`;
 
+  const pillsWrap = document.createElement('div');
+  pillsWrap.className = 'genre-type-pills';
+  let activeType = 'all';
+  [['all', 'All'], ['Movie', 'Movies'], ['Series', 'TV']].forEach(([val, label]) => {
+    const pill = document.createElement('button');
+    pill.className = 'genre-type-pill' + (val === 'all' ? ' active' : '');
+    pill.textContent = label;
+    pill.addEventListener('click', () => {
+      activeType = val;
+      pillsWrap.querySelectorAll('.genre-type-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      buildGenreRows(sortSel.value);
+    });
+    pillsWrap.appendChild(pill);
+  });
+
   detailHeader.appendChild(backBtn);
   detailHeader.appendChild(titleEl);
   detailHeader.appendChild(countEl);
   detailHeader.appendChild(sortSel);
+  detailHeader.appendChild(pillsWrap);
   section.appendChild(detailHeader);
 
   // Hide tiles grid while showing detail
   tilesGrid.style.display = 'none';
 
-  // Render rows for Movies and TV
   const rowsWrap = document.createElement('div');
-  rowsWrap.className = 'shelf-rows';
 
   const genreRowObserver = new IntersectionObserver((entries, obs) => {
     entries.forEach(entry => {
@@ -4687,58 +4732,24 @@ function renderGenreDetail(genre, wrap, tilesGrid) {
 
   function buildGenreRows(sortKey) {
     rowsWrap.innerHTML = '';
-    [[movies, 'Movies'], [series, 'TV Shows']].forEach(([arr, label]) => {
+    [[movies, 'Movie', 'Movies'], [series, 'Series', 'TV Shows']].forEach(([arr, type, label]) => {
       if (arr.length === 0) return;
+      if (activeType !== 'all' && activeType !== type) return;
       const sorted = applySortToItems(arr, sortKey);
 
-      const rowEl = document.createElement('div');
-      rowEl.className = 'shelf-row';
+      const groupEl = document.createElement('div');
+      groupEl.style.cssText = 'margin-bottom: 32px;';
 
-      const rowHeader = document.createElement('div');
-      rowHeader.className = 'row-header';
-      rowHeader.innerHTML = `
-        <span class="row-title">${label}</span>
-        <span class="row-count">${arr.length}</span>`;
-      rowEl.appendChild(rowHeader);
+      const groupHeader = document.createElement('div');
+      groupHeader.className = 'row-header';
+      groupHeader.innerHTML = `<span class="row-title">${label}</span><span class="row-count">${arr.length}</span>`;
+      groupEl.appendChild(groupHeader);
 
-      const scrollWrap = document.createElement('div');
-      scrollWrap.className = 'row-scroll-wrap';
-
-      const fadeLeft  = document.createElement('div');
-      fadeLeft.className  = 'row-fade row-fade-left';
-      const fadeRight = document.createElement('div');
-      fadeRight.className = 'row-fade row-fade-right';
-
-      const arrowLeft  = document.createElement('button');
-      arrowLeft.className  = 'row-arrow row-arrow-left hidden';
-      arrowLeft.innerHTML  = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>`;
-      const arrowRight = document.createElement('button');
-      arrowRight.className = 'row-arrow row-arrow-right';
-      arrowRight.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>`;
-
-      const scroll = document.createElement('div');
-      scroll.className = 'row-scroll';
-      sorted.forEach(item => scroll.appendChild(makeCard(item)));
-
-      const SCROLL_BY = 197 * 4;
-      arrowLeft.addEventListener('click',  () => scroll.scrollBy({ left: -SCROLL_BY, behavior: 'smooth' }));
-      arrowRight.addEventListener('click', () => scroll.scrollBy({ left:  SCROLL_BY, behavior: 'smooth' }));
-
-      scroll.addEventListener('scroll', () => {
-        const atStart = scroll.scrollLeft <= 20;
-        const atEnd   = scroll.scrollLeft + scroll.clientWidth >= scroll.scrollWidth - 20;
-        fadeLeft.classList.toggle('visible', !atStart);
-        arrowLeft.classList.toggle('hidden',  atStart);
-        arrowRight.classList.toggle('hidden', atEnd);
-      }, { passive: true });
-
-      scrollWrap.appendChild(fadeLeft);
-      scrollWrap.appendChild(arrowLeft);
-      scrollWrap.appendChild(scroll);
-      scrollWrap.appendChild(arrowRight);
-      scrollWrap.appendChild(fadeRight);
-      rowEl.appendChild(scrollWrap);
-      rowsWrap.appendChild(rowEl);
+      const grid = document.createElement('div');
+      grid.className = 'collection-cards-grid';
+      sorted.forEach(item => grid.appendChild(makeCard(item)));
+      groupEl.appendChild(grid);
+      rowsWrap.appendChild(groupEl);
     });
     rowsWrap.querySelectorAll('img[data-src]').forEach(img => genreRowObserver.observe(img));
   }
