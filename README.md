@@ -4,8 +4,6 @@ A Netflix-style frontend for [Jellyfin](https://jellyfin.org/), built as a singl
 
 Drop it anywhere. Open it in a browser. Connect to your Jellyfin server.
 
-![JellyBox screenshot — dark glassmorphism UI with Netflix-style browse rows](screenshot.png)
-
 ## Features
 
 - **Netflix-style browse rows** — Continue Watching, New & Recent, Acclaimed, Edge of Seat, Scary, Hidden Gems, Classic Era, New Episodes, and more
@@ -17,7 +15,7 @@ Drop it anywhere. Open it in a browser. Connect to your Jellyfin server.
 - **Watchlist** — bookmark anything, persisted in localStorage
 - **Lucky Reel** — spin wheel to pick something to watch
 - **Mystery Box** — blind random pick with dramatic reveal
-- **Fuzzy search** — search by title, director, or cast member
+- **Fuzzy search** — search by title, director, or cast member (people loaded in background after init)
 - **Trailer button** — plays trailers directly in the detail modal
 - **Stats tab** — library stats, top genres, completion rate, and more
 - **Multi-profile login** — saved profile switcher per browser
