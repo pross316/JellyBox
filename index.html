@@ -2529,9 +2529,11 @@ function getUserName() { return localStorage.getItem('jb_user_name') || ''; }
         <div class="result-overview" id="resultOverview"></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto">
           <button class="again-btn" id="spinWatchBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg> Watch Now</button>
+          <button class="again-btn" id="spinSendBtn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M17 2H7l-2 5h14l-2-5z"/></svg> Send to Device</button>
           <button class="again-btn" id="spinAgainBtn">Spin Again</button>
           <button class="reel-skip-btn" id="spinSkipBtn">Skip this one</button>
         </div>
+        <div id="spinSessions"></div>
       </div>
     </div>
   </div>
@@ -3192,24 +3194,7 @@ function showDetailModal(item) {
     });
   });
 
-  overlay.querySelector('#dmSend').addEventListener('click', async function() {
-    this.disabled = true;
-    this.textContent = 'Finding devices…';
-    const sessionsEl = overlay.querySelector('#dmSessions');
-    sessionsEl.innerHTML = '';
-    const sessions = await fetchSessions();
-    this.remove();
-
-    const renderDevices = (list) => {
-      list.forEach(session => {
-        const deviceName = session.DeviceName || session.Client;
-        const btn = document.createElement('button');
-        btn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M17 2H7l-2 5h14l-2-5z"/></svg>${escHtml(deviceName)}`;
-        btn.addEventListener('click', async () => {
-          close();
-          const ok = await playOnSession(session.Id, item.Id);
-          showToast(ok ? `Playing on ${deviceName}` : "Couldn't send to TV");
-        });
+  attachSendToDevice(overlay.querySelector('#dmSend'), overlay.querySelector('#dmSessions'), item, () => close());
         sessionsEl.appendChild(btn);
       });
     };
@@ -3713,6 +3698,49 @@ document.querySelector('.app-logo').addEventListener('click', e => {
   document.querySelector('.nav-btn[data-section="shelf"]').click();
 });
 
+function attachSendToDevice(btn, sessionsEl, item, onPlay) {
+  btn.disabled = true;
+  btn.textContent = 'Finding devices…';
+  sessionsEl.innerHTML = '';
+  fetchSessions().then(sessions => {
+    btn.remove();
+    const renderDevices = list => {
+      list.forEach(session => {
+        const deviceName = session.DeviceName || session.Client;
+        const devBtn = document.createElement('button');
+        devBtn.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M17 2H7l-2 5h14l-2-5z"/></svg>${escHtml(deviceName)}`;
+        devBtn.addEventListener('click', async () => {
+          if (onPlay) onPlay();
+          const ok = await playOnSession(session.Id, item.Id);
+          showToast(ok ? `Playing on ${deviceName}` : "Couldn't send to device");
+          sessionsEl.innerHTML = '';
+        });
+        sessionsEl.appendChild(devBtn);
+      });
+    };
+    if (sessions === null) {
+      sessionsEl.innerHTML = `<div class="detail-session-label">Can't reach Jellyfin</div>`;
+    } else if (sessions.length === 0) {
+      const retryBtn = document.createElement('button');
+      retryBtn.textContent = 'No device found — tap to retry';
+      retryBtn.addEventListener('click', async () => {
+        retryBtn.textContent = 'Checking…'; retryBtn.disabled = true;
+        const retried = await fetchSessions();
+        sessionsEl.innerHTML = '';
+        if (retried && retried.length > 0) renderDevices(retried);
+        else sessionsEl.innerHTML = `<div class="detail-session-label">No devices found</div>`;
+      });
+      sessionsEl.appendChild(retryBtn);
+    } else {
+      const label = document.createElement('div');
+      label.className = 'detail-session-label';
+      label.textContent = 'Send to device';
+      sessionsEl.appendChild(label);
+      sessionsEl.className = 'detail-sessions';
+      renderDevices(sessions);
+    }
+  });
+}
 // Nav — delegated listener
 document.getElementById('mainNav').addEventListener('click', e => {
   const btn = e.target.closest('[data-section]');
@@ -3741,6 +3769,7 @@ document.getElementById('wheelType').addEventListener('change', resampleWheel);
 document.getElementById('wheelGenre').addEventListener('change', resampleWheel);
 document.getElementById('spinBtn').addEventListener('click', spin);
 document.getElementById('spinWatchBtn').addEventListener('click', e => { e.stopPropagation(); if (reelCurrentWinner) showInlinePlayer(reelCurrentWinner); });
+document.getElementById('spinSendBtn').addEventListener('click', e => { e.stopPropagation(); if (reelCurrentWinner) attachSendToDevice(e.currentTarget, document.getElementById('spinSessions'), reelCurrentWinner); });
 document.getElementById('spinAgainBtn').addEventListener('click', e => { e.stopPropagation(); spinAgain(); });
 document.getElementById('spinSkipBtn').addEventListener('click', e => { e.stopPropagation(); skipAndSpin(); });
 document.getElementById('reelSkipResetBtn').addEventListener('click', resetSkips);
@@ -5294,9 +5323,16 @@ function renderBlindCard() {
 
   const actEl = document.getElementById('blindActions');
   if (blindRevealed) {
-    actEl.innerHTML = `<button class="blind-again-btn">Deal Another</button>`;
+    actEl.innerHTML = `
+      <button class="blind-again-btn">Deal Another</button>
+      <button class="again-btn blind-watch-btn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg> Watch Now</button>
+      <button class="again-btn blind-send-btn"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M17 2H7l-2 5h14l-2-5z"/></svg> Send to Device</button>`;
+    const blindSessEl = document.createElement('div');
+    actEl.appendChild(blindSessEl);
     actEl.querySelector('.blind-again-btn').addEventListener('click', dealBlind);
-  } else {
+    actEl.querySelector('.blind-watch-btn').addEventListener('click', e => { e.stopPropagation(); showInlinePlayer(item); });
+    actEl.querySelector('.blind-send-btn').addEventListener('click', e => { e.stopPropagation(); attachSendToDevice(e.currentTarget, blindSessEl, item); });
+
     actEl.innerHTML = `
       <button class="blind-reveal-btn">Reveal Title</button>
       <button class="blind-skip-btn">Skip</button>`;
